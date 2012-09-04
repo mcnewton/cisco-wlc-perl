@@ -1,6 +1,6 @@
 #! /usr/bin/perl -w
 
-package WLC::AP;
+package CiscoWireless::AP;
 
 use Data::Dumper;
 

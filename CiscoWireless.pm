@@ -1,11 +1,12 @@
 #! /usr/bin/perl -w
 
-package WLC;
+package CiscoWireless;
 
 use Data::Dumper;
 use Net::SNMP;
 
-use WLC::AP;
+use CiscoWireless::AP;
+use CiscoWireless::WLC;
 
 use strict;
 use vars qw($VERSION @ISA @EXPORT);
@@ -15,8 +16,6 @@ use Exporter;
 @ISA = qw(Exporter);
 @EXPORT = qw();
 $VERSION = '0.01';
-
-my %wlcs = ();
 
 
 sub new
