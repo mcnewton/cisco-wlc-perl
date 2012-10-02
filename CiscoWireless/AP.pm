@@ -17,15 +17,14 @@ $VERSION = '0.01';
 
 sub new
 {
-  my ($class, $wlc, $mac, $wlc_ip) = @_;
+  my ($class, $mac, $wlc) = @_;
 
   croak "invalid mac address format ($mac)" unless $mac =~ /^[a-f0-9]{12}$/i;
 
   my $self = {
-    wlc         => $wlc,
     mac         => $mac,
+    wlc         => $wlc,
     oidindex    => join(".", map {hex $_} unpack("(A2)6", $mac)),
-    wlc_ip      => $wlc_ip,
     name        => undef,
   };
 
@@ -86,11 +85,11 @@ sub mac
   return $self->{mac};
 }
 
-sub wlcip
+sub wlc
 {
   my ($self) = @_;
 
-  return $self->{wlc_ip};
+  return $self->{wlc};
 }
 
 sub _oidindex
@@ -102,17 +101,48 @@ sub _oidindex
 
 sub _generic_method
 {
-  my ($self, $name, $oidprefix, $new, $rw, $type) = @_;
+  #my ($self, $name, $oidprefix, $new, $rw, $type) = @_;
+  my ($self, $name, $new, $opts) = @_;
+
+  my ($oidprefix, $use_slots, $rw, $type) = @$opts;
   my $oid = $oidprefix . $self->{oidindex};
   my $r;
 
   unless (defined($new)) {
     return $self->{$name} if defined $self->{$name};
 
-    $r = $self->{wlc}->_snmp_get_ap($self, [$oid]);
-    return undef unless defined $r;
-    $self->{$name} = $$r{$oid} || undef;
-    return $self->{$name};
+    if (!$use_slots) {
+      $r = $self->{wlc}->_snmp_get_ap($self, [$oid]);
+      return undef unless defined $r;
+      $self->{$name} = $$r{$oid} || undef;
+      return $self->{$name};
+    } else {
+      my $slots = $self->numslots() || 1;
+      my %ra = ();
+      my $got_result = 0;
+
+      for (my $slot = 0; $slot < $slots; $slot++) {
+#        print $oid . ".$slot\n";
+        $r = $self->{wlc}->_snmp_get_ap($self, [$oid . ".$slot"]);
+        $ra{$slot} = undef;
+        if (defined $r) {
+          $ra{$slot} = $$r{$oid . ".$slot"};
+          $got_result = 1;
+        }
+        return undef unless $got_result;
+      }
+
+      $self->{$name} = \%ra || undef;
+      return $self->{$name};
+    }
+  }
+
+  if ($use_slots) {
+    carp "currently unable to write to slot-based oid";
+    return undef;
+
+    # this can be fixed by accepting hashref as returned above, and
+    # writing with a loop like above
   }
 
   if (defined $rw and !$rw) {
@@ -134,34 +164,36 @@ sub _generic_method
   return undef;
 }
 
-#sub location
-#{
-#  my ($self, $new) = @_;
-#
-#  return $self->_generic_method("location", ".1.3.6.1.4.1.14179.2.2.1.1.4.", $new, 1);
-#}
-
 my %_methods = (
-    "name"            => [ ".1.3.6.1.4.1.14179.2.2.1.1.3.", 1, OCTET_STRING],
-    "location"        => [ ".1.3.6.1.4.1.14179.2.2.1.1.4.", 1, OCTET_STRING],
-    "operationstatus" => [ ".1.3.6.1.4.1.14179.2.2.1.1.6.", 0, INTEGER],
-    "softwareversion" => [ ".1.3.6.1.4.1.14179.2.2.1.1.8.", 0, OCTET_STRING],
-    "bootversion"     => [ ".1.3.6.1.4.1.14179.2.2.1.1.9.", 0, OCTET_STRING],
-    "primarywlc"      => [ ".1.3.6.1.4.1.14179.2.2.1.1.10.", 1, OCTET_STRING],
-    "resetap"         => [ ".1.3.6.1.4.1.14179.2.2.1.1.11.", 1, INTEGER],
-    "model"           => [ ".1.3.6.1.4.1.14179.2.2.1.1.16.", 0, OCTET_STRING],
-    "serialnumber"    => [ ".1.3.6.1.4.1.14179.2.2.1.1.17.", 0, OCTET_STRING],
-    "clearconfig"     => [ ".1.3.6.1.4.1.14179.2.2.1.1.19.", 1, INTEGER],
-    "ipaddress"       => [ ".1.3.6.1.4.1.14179.2.2.1.1.19.", 1, IPADDRESS],
-    "secondarywlc"    => [ ".1.3.6.1.4.1.14179.2.2.1.1.23.", 1, OCTET_STRING],
-    "tertiarywlc"     => [ ".1.3.6.1.4.1.14179.2.2.1.1.24.", 1, OCTET_STRING],
-    "isstaticip"      => [ ".1.3.6.1.4.1.14179.2.2.1.1.25.", 1, INTEGER],
-    "netmask"         => [ ".1.3.6.1.4.1.14179.2.2.1.1.26.", 1, IPADDRESS],
-    "gateway"         => [ ".1.3.6.1.4.1.14179.2.2.1.1.27.", 1, IPADDRESS],
-    "staticipaddress" => [ ".1.3.6.1.4.1.14179.2.2.1.1.28.", 1, IPADDRESS],
-    "apgroup"         => [ ".1.3.6.1.4.1.14179.2.2.1.1.30.", 1, OCTET_STRING],
-    "ethernetmac"     => [ ".1.3.6.1.4.1.14179.2.2.1.1.33.", 0, OCTET_STRING],
-    "adminstatus"     => [ ".1.3.6.1.4.1.14179.2.2.1.1.37.", 1, INTEGER],
+    "numslots"        => [ ".1.3.6.1.4.1.14179.2.2.1.1.2.",  0, 1, OCTET_STRING ],
+    "name"            => [ ".1.3.6.1.4.1.14179.2.2.1.1.3.",  0, 1, OCTET_STRING ],
+    "location"        => [ ".1.3.6.1.4.1.14179.2.2.1.1.4.",  0, 1, OCTET_STRING ],
+    "operationstatus" => [ ".1.3.6.1.4.1.14179.2.2.1.1.6.",  0, 0, INTEGER ],
+    "softwareversion" => [ ".1.3.6.1.4.1.14179.2.2.1.1.8.",  0, 0, OCTET_STRING ],
+    "bootversion"     => [ ".1.3.6.1.4.1.14179.2.2.1.1.9.",  0, 0, OCTET_STRING ],
+    "primarywlc"      => [ ".1.3.6.1.4.1.14179.2.2.1.1.10.", 0, 1, OCTET_STRING ],
+    "resetap"         => [ ".1.3.6.1.4.1.14179.2.2.1.1.11.", 0, 1, INTEGER ],
+    "model"           => [ ".1.3.6.1.4.1.14179.2.2.1.1.16.", 0, 0, OCTET_STRING ],
+    "serialnumber"    => [ ".1.3.6.1.4.1.14179.2.2.1.1.17.", 0, 0, OCTET_STRING ],
+    "clearconfig"     => [ ".1.3.6.1.4.1.14179.2.2.1.1.19.", 0, 1, INTEGER ],
+    "ipaddress"       => [ ".1.3.6.1.4.1.14179.2.2.1.1.19.", 0, 1, IPADDRESS ],
+    "secondarywlc"    => [ ".1.3.6.1.4.1.14179.2.2.1.1.23.", 0, 1, OCTET_STRING ],
+    "tertiarywlc"     => [ ".1.3.6.1.4.1.14179.2.2.1.1.24.", 0, 1, OCTET_STRING ],
+    "isstaticip"      => [ ".1.3.6.1.4.1.14179.2.2.1.1.25.", 0, 1, INTEGER ],
+    "netmask"         => [ ".1.3.6.1.4.1.14179.2.2.1.1.26.", 0, 1, IPADDRESS ],
+    "gateway"         => [ ".1.3.6.1.4.1.14179.2.2.1.1.27.", 0, 1, IPADDRESS ],
+    "staticipaddress" => [ ".1.3.6.1.4.1.14179.2.2.1.1.28.", 0, 1, IPADDRESS ],
+    "apgroup"         => [ ".1.3.6.1.4.1.14179.2.2.1.1.30.", 0, 1, OCTET_STRING ],
+    "ethernetmac"     => [ ".1.3.6.1.4.1.14179.2.2.1.1.33.", 0, 0, OCTET_STRING ],
+    "adminstatus"     => [ ".1.3.6.1.4.1.14179.2.2.1.1.37.", 0, 1, INTEGER ],
+
+# AIRESPACE-WIRELESS-MIB::bsnAPIfLoadParametersTable
+    "bsnAPIfLoadRxUtilization"      => [ ".1.3.6.1.4.1.14179.2.2.13.1.1.", 1, 0, INTEGER ],
+    "bsnAPIfLoadTxUtilization"      => [ ".1.3.6.1.4.1.14179.2.2.13.1.2.", 1, 0, INTEGER ],
+    "bsnAPIfLoadChannelUtilization" => [ ".1.3.6.1.4.1.14179.2.2.13.1.3.", 1, 0, INTEGER ],
+    "bsnAPIfLoadNumOfClients"       => [ ".1.3.6.1.4.1.14179.2.2.13.1.4.", 1, 0, INTEGER ],
+    "bsnAPIfPoorSNRClients"         => [ ".1.3.6.1.4.1.14179.2.2.13.1.5.", 1, 0, INTEGER ],
+  
   );
 
 # INTEGER, INTEGER32, OCTET_STRING, OBJECT_IDENTIFIER, IPADDRESS, COUNTER, COUNTER32, GAUGE,
@@ -170,12 +202,31 @@ my %_methods = (
 
 {
   foreach my $func (keys %_methods) {
-    eval "sub $func { return \$_[0]->_generic_method(\"$func\", \"" .
-          $_methods{$func}[0] . "\", \$_[1], " . $_methods{$func}[1] . ", " .
-          $_methods{$func}[2] . ");}"
+    eval "sub $func { return \$_[0]->_generic_method(\"$func\", \$_[1], " .
+          "\$_methods{$func});}";
   }
 }
 
+#{
+#  foreach my $func (keys %_methods) {
+#    eval "sub $func { return \$_[0]->_generic_method(\"$func\", \"" .
+#          $_methods{$func}[0] . "\", \$_[1], " . $_methods{$func}[1] . ", " .
+#          $_methods{$func}[2] . ");}"
+#  }
+#}
+
+
+sub get_rrd_create
+{
+  my ($self, $func) = @_;
+
+  carp "no method $func" unless defined $_methods{$func};
+
+  my $use_slots = ${$_methods{$func}}[1];
+
+  my $rrd = "rrdtool create filename.rrd";
+  print "$use_slots\n";
+}
 
 
 
