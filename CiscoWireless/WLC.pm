@@ -28,6 +28,7 @@ sub new
     snmp_community   => "public",
     snmp_version     => 1,
     ap_list          => undef,
+    client_list      => undef,
     auto_requery_aps => 1, # try and find new controller if I don't have requested AP
   };
 
@@ -146,6 +147,9 @@ my %_methods = (
 }
 
 
+################################################################################
+# AP functions
+
 #-------------------------------------------------------------------------------
 # add or update values for an AP
 
@@ -242,6 +246,64 @@ sub _snmp_get_ap
 ##  return $snmp_session->get_request(-varbindlist => $vbl);
 }
 
+################################################################################
+# Client functions
+
+#-------------------------------------------------------------------------------
+# add or update values for a Client
+
+sub get_clients
+{
+  my ($self) = @_;
+
+  $self->_query_clients() unless defined $self->{client_list};
+
+  return values %{$self->{client_list}};
+}
+
+
+#-------------------------------------------------------------------------------
+# add or update values for a Client
+
+sub _add_update_client
+{
+  my ($self, $client_mac, $data) = @_;
+
+  unless (defined $self->{client_list}{$client_mac}) {
+    $self->{client_list}{$client_mac} = CiscoWireless::Client->new($client_mac, $self);
+  }
+
+  foreach my $i (keys %$data) {
+    $self->{client_list}{$client_mac}->update($i, $$data{$i});
+  }
+
+#  return $self->{client_list}{$ap_mac};
+}
+
+
+#-------------------------------------------------------------------------------
+# force query the WLC for all connected Clients
+
+sub _query_clients
+{
+  my ($self) = @_;
+  my $snmp_session;
+
+  my $baseoid = ".1.3.6.1.4.1.14179.2.1.4.1.4";
+
+  $self->_get_generic_snmp_table($baseoid,
+    sub {
+      my ($oid, $value) = @_;
+      my $client_mac = _get_mac_from_oid($oid);
+      $self->_add_update_client($client_mac,
+        {apmac => CiscoWireless::_convert_snmp_mac_to_hex($value)});
+    });
+}
+
+
+
+################################################################################
+# SNMP functions
 
 #-------------------------------------------------------------------------------
 # Generic read SNMP table

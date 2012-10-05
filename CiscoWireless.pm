@@ -7,6 +7,7 @@ use Net::SNMP;
 
 use CiscoWireless::AP;
 use CiscoWireless::WLC;
+use CiscoWireless::Client;
 
 use strict;
 use vars qw($VERSION @ISA @EXPORT);
@@ -24,6 +25,7 @@ sub new
 
   my $self = {
     wlc_list    => {},
+    client_list => {},
     cache_file  => undef,
     cache_data  => undef,
   };
@@ -158,7 +160,6 @@ sub get_ap_by_mac
 sub _query_wlcs_aps
 {
   my ($self) = @_;
-  my $snmp_session;
 
   foreach my $wlc (keys %{$self->{wlc_list}}) {
     $self->{wlc_list}{$wlc}->_query_aps();
@@ -186,7 +187,79 @@ sub _add_update_ap
 
 
 ################################################################################
+# Client functions
+
+#-------------------------------------------------------------------------------
+# get_clients
+
+sub get_clients
+{
+  my ($self) = @_;
+  my @allclients = ();
+
+  foreach my $wlc (values %{$self->{wlc_list}}) {
+    push @allclients, $wlc->get_clients();
+  }
+
+  return \@allclients;
+}
+
+
+sub get_client_by_mac
+{
+  my ($self, $mac) = @_;
+
+  $mac = lc $mac;
+
+  foreach my $wlc (values %{$self->{wlc_list}}) {
+    foreach my $client ($wlc->get_clients()) {
+      if (lc $client->{mac} eq $mac) {
+        return $client;
+      }
+    }
+  }
+
+  return undef;
+}
+
+
+#-------------------------------------------------------------------------------
+# query_clients
+
+sub _query_wlcs_clients
+{
+  my ($self) = @_;
+
+  foreach my $wlc (keys %{$self->{wlc_list}}) {
+    $self->{wlc_list}{$wlc}->_query_clients();
+  }
+}
+
+
+################################################################################
 # SNMP functions
+
+#-------------------------------------------------------------------------------
+# Convert MAC returned from SNMP to hex
+
+sub _convert_snmp_mac_to_hex
+{
+  my $inmac = shift;
+
+  if ($inmac =~ /^(?:0x)?([0-9a-f]{12})$/) {
+    # maybe mac is string possibly beginning 0x? if so, return without 0x
+    return lc $1;
+  }
+
+  if ($inmac =~ /^.{6}$/s) {
+    # if MAC consists of exactly six chars, return hex representation
+    return lc join("", unpack("H2H2H2H2H2H2", $inmac));
+  }
+
+  # dunno what it is...
+  return undef;
+}
+
 
 #-------------------------------------------------------------------------------
 # Generic read SNMP table
