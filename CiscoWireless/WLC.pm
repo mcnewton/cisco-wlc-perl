@@ -211,7 +211,7 @@ sub _snmp_write_ap
   return $r if defined $r;
 
   # AP may have moved to a different controller
-  $self->_query_wlcs_aps();
+  $self->_query_aps();
   my $wlc_ip2 = $ap->{wlc_ip};
   return undef if $wlc_ip eq $wlc_ip2;
 
@@ -234,7 +234,7 @@ sub _snmp_get_ap
 
   return undef;
 ##  # AP may have moved to a different controller
-##  $self->_query_wlcs_aps();
+##  $self->_query_aps();
 ##  my $wlc_ip2 = $ap->{wlc_ip};
 ##  return undef if $wlc_ip eq $wlc_ip2;
 ##
