@@ -27,6 +27,7 @@ sub new
     oidindex    => join(".", map {hex $_} unpack("(A2)6", $mac)),
     username    => undef,
     ip          => undef,
+    nearby      => undef,
   };
 
   bless $self, $class;
@@ -161,6 +162,54 @@ my %_methods = (
 #  print "$use_slots\n";
 #}
 
+sub get_nearby_aps
+{
+  my ($self) = @_;
+
+  return $self->{nearby} if defined $self->{nearby};
+
+  my %nearby = ();
+
+  my $baseoid = ".1.3.6.1.4.1.14179.2.1.11.1.4." . $self->{oidindex};
+  $self->{wlc}->_get_generic_snmp_table($baseoid,
+    sub {
+      my ($oid, $value) = @_;
+      my $ap_mac = $self->_get_nearby_ap_mac_from_oid($oid);
+      $nearby{$ap_mac}{name} = $value;
+    });
+
+  $baseoid = ".1.3.6.1.4.1.14179.2.1.11.1.5." . $self->{oidindex};
+  $self->{wlc}->_get_generic_snmp_table($baseoid,
+    sub {
+      my ($oid, $value) = @_;
+      my $ap_mac = $self->_get_nearby_ap_mac_from_oid($oid);
+      $nearby{$ap_mac}{rssi} = $value;
+    });
+
+  $baseoid = ".1.3.6.1.4.1.14179.2.1.11.1.25." . $self->{oidindex};
+  $self->{wlc}->_get_generic_snmp_table($baseoid,
+    sub {
+      my ($oid, $value) = @_;
+      my $ap_mac = $self->_get_nearby_ap_mac_from_oid($oid);
+      $nearby{$ap_mac}{lastseen} = $value;
+    });
+
+  $self->{nearby} = \%nearby;
+
+  return $self->{nearby};
+}
+
+sub _get_nearby_ap_mac_from_oid
+{
+  my ($self, $oid) = @_;
+
+  unless ($oid =~ /\.(\d+(?:\.\d+){5}).[01].[01]$/) {
+    carp "cannot extract mac from oid ($oid)";
+    return undef;
+  }
+
+  return lc join("", unpack("(H2)6", pack("C6", split(/\./, $1))));
+}
 
 1;
 
