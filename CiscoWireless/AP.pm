@@ -3,6 +3,7 @@
 package CiscoWireless::AP;
 
 use Data::Dumper;
+use CiscoWireless::Util qw/sanitise_mac format_mac/;
 
 use strict;
 use Net::SNMP;
@@ -19,13 +20,15 @@ sub new
 {
   my ($class, $mac, $wlc) = @_;
 
-  croak "invalid mac address format ($mac)" unless $mac =~ /^[a-f0-9]{12}$/i;
+  my $smac = sanitise_mac($mac);
+  croak "invalid mac address format ($mac)" unless defined $smac;
 
   my $self = {
-    mac         => $mac,
+    mac         => $smac,
     wlc         => $wlc,
-    oidindex    => join(".", map {hex $_} unpack("(A2)6", $mac)),
+    oidindex    => join(".", map {hex $_} unpack("(A2)6", $smac)),
     name        => undef,
+    ethernetmac => undef,
   };
 
   bless $self, $class;
@@ -72,17 +75,21 @@ sub mac
 {
   my ($self, $sep) = @_;
 
-  if (defined $sep) {
-    if ($sep eq ":" || $sep eq "-") {
-      return lc join($sep, unpack("(a2)6", $self->{mac}));
-    }
-    if ($sep eq ".") {
-      return lc join($sep, unpack("(a4)3", $self->{mac}));
-    }
-    croak "unknown separator '$sep'";
+  return format_mac($self->{mac}, $sep);
+}
+
+sub ethernetmac
+{
+  my ($self, $sep) = @_;
+
+  if (!defined($self->{ethernetmac})) {
+    my $oid = ".1.3.6.1.4.1.14179.2.2.1.1.33." . $self->{oidindex};
+    my $r = $self->{wlc}->_snmp_get_ap($self, [$oid]);
+    $self->{ethernetmac} = sanitise_mac($$r{$oid}); # may be undef
+    $self->{ethernetmac} =~ s/^0x// if defined($self->{ethernetmac});
   }
 
-  return $self->{mac};
+  return format_mac($self->{ethernetmac}, $sep);
 }
 
 sub wlc
@@ -184,7 +191,6 @@ my %_methods = (
     "gateway"         => [ ".1.3.6.1.4.1.14179.2.2.1.1.27.", 0, 1, IPADDRESS ],
     "staticipaddress" => [ ".1.3.6.1.4.1.14179.2.2.1.1.28.", 0, 1, IPADDRESS ],
     "apgroup"         => [ ".1.3.6.1.4.1.14179.2.2.1.1.30.", 0, 1, OCTET_STRING ],
-    "ethernetmac"     => [ ".1.3.6.1.4.1.14179.2.2.1.1.33.", 0, 0, OCTET_STRING ],
     "adminstatus"     => [ ".1.3.6.1.4.1.14179.2.2.1.1.37.", 0, 1, INTEGER ],
 
 # AIRESPACE-WIRELESS-MIB::bsnAPIfLoadParametersTable
