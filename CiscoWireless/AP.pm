@@ -198,8 +198,8 @@ my %_methods = (
 
 # AIRESPACE-WIRELESS-MIB::bsnAPIfTable
 
-    "bsnAPIfPhyTxPowerControl"      => [ ".1.3.6.1.4.1.14179.2.2.2.1.5", 1, 1, INTEGER ],
-    "bsnAPIfPhyTxPowerLevel"        => [ ".1.3.6.1.4.1.14179.2.2.2.1.6", 1, 1, INTEGER ],
+    "bsnAPIfPhyTxPowerControl"      => [ ".1.3.6.1.4.1.14179.2.2.2.1.5.", 1, 1, INTEGER ],
+    "bsnAPIfPhyTxPowerLevel"        => [ ".1.3.6.1.4.1.14179.2.2.2.1.6.", 1, 1, INTEGER ],
 
 # AIRESPACE-WIRELESS-MIB::bsnAPIfLoadParametersTable
     "bsnAPIfLoadRxUtilization"      => [ ".1.3.6.1.4.1.14179.2.2.13.1.1.", 1, 0, INTEGER ],
