@@ -2,6 +2,8 @@
 
 package CiscoWireless::Rogue;
 
+use CiscoWireless::WLC;
+
 use strict;
 use Net::SNMP;
 use vars qw($VERSION @ISA @EXPORT);
@@ -14,6 +16,7 @@ $VERSION = '0.01';
 
 # .1.3.6.1.4.1.14179.2.1.7.1.1 MAC
 # .1.3.6.1.4.1.14179.2.1.7.1.2 num_detecting_aps
+
 
 sub new
 {
@@ -34,10 +37,12 @@ sub new
   return $self;
 }
 
+
 sub init
 {
   my ($self) = @_;
 }
+
 
 sub update
 {
@@ -64,6 +69,7 @@ sub mac
   return $self->{mac};
 }
 
+
 sub wlc
 {
   my ($self) = @_;
@@ -71,12 +77,14 @@ sub wlc
   return $self->{wlc};
 }
 
+
 sub _oidindex
 {
   my ($self) = @_;
 
   return $self->{oidindex};
 }
+
 
 sub _generic_method
 {
@@ -143,6 +151,65 @@ my %_methods = (
           "\$_methods{$func});}";
   }
 }
+
+
+
+################################################################################
+# Rogue functions for WLC
+
+package CiscoWireless::WLC;
+
+
+#-------------------------------------------------------------------------------
+# get list of all rogues
+
+sub get_rogues
+{
+  my ($self) = @_;
+
+  $self->_query_rogues() unless defined $self->{rogue_list};
+
+  return values %{$self->{rogue_list}};
+}
+
+
+#-------------------------------------------------------------------------------
+# add or update values for a rogue
+
+sub _add_update_rogue
+{
+  my ($self, $rogue_mac) = @_;
+
+  unless (defined $self->{rogue_list}{$rogue_mac}) {
+    $self->{rogue_list}{$rogue_mac} = CiscoWireless::Rogue->new($rogue_mac, $self);
+  }
+
+#  foreach my $i (keys %$data) {
+#    $self->{rogue_list}{$rogue_mac}->update($i, $$data{$i});
+#  }
+
+#  return $self->{rogue_list}{$rogue_mac};
+}
+
+
+#-------------------------------------------------------------------------------
+# force query the WLC for all detected rogues
+
+sub _query_rogues
+{
+  my ($self) = @_;
+  my $snmp_session;
+
+  my $baseoid = ".1.3.6.1.4.1.14179.2.1.7";
+
+  $self->_get_generic_snmp_table($baseoid,
+    sub {
+      my ($oid, $value) = @_;
+      my $rogue_mac = get_mac_from_oid($oid);
+      $self->_add_update_rogue($rogue_mac);
+    });
+}
+
 
 
 1;

@@ -103,7 +103,7 @@ sub _generic_method
 
 
 my %_methods = (
-    "name"             => [ ".1.3.6.1.2.1.1.5.0",   0, OCTET_STRING],
+    "name"             => [ ".1.3.6.1.2.1.1.5.0",             0, OCTET_STRING],
     "model"            => [ ".1.3.6.1.4.1.14179.1.1.1.3.0",   0, OCTET_STRING],
     "serial"           => [ ".1.3.6.1.4.1.14179.1.1.1.4.0",   0, OCTET_STRING],
     "burnedinmac"      => [ ".1.3.6.1.4.1.14179.1.1.1.9.0",   0, OCTET_STRING],
@@ -126,219 +126,10 @@ my %_methods = (
 }
 
 
-################################################################################
-# AP functions
-
-#-------------------------------------------------------------------------------
-# get list of all APs
-
-sub get_aps
-{
-  my ($self) = @_;
-
-  $self->_query_aps() unless defined $self->{ap_list};
-
-  return values %{$self->{ap_list}};
-}
-
-
-#-------------------------------------------------------------------------------
-# add or update values for an AP
-
-sub _add_update_ap
-{
-  my ($self, $ap_mac, $data) = @_;
-
-  unless (defined $self->{ap_list}{$ap_mac}) {
-    $self->{ap_list}{$ap_mac} = CiscoWireless::AP->new($ap_mac, $self);
-  }
-
-  foreach my $i (keys %$data) {
-    $self->{ap_list}{$ap_mac}->update($i, $$data{$i});
-  }
-
-#  return $self->{ap_list}{$ap_mac};
-}
-
-
-#-------------------------------------------------------------------------------
-# force query the WLC for all connected APs
-
-sub _query_aps
-{
-  my ($self) = @_;
-  my $snmp_session;
-
-  my $baseoid = ".1.3.6.1.4.1.14179.2.2.1.1.3";
-
-  $self->_get_generic_snmp_table($baseoid,
-    sub {
-      my ($oid, $value) = @_;
-      my $ap_mac = get_mac_from_oid($oid);
-      $self->_add_update_ap($ap_mac, {name => $value});
-    });
-}
-
-
-#-------------------------------------------------------------------------------
-# Generic SNMP write to an AP
-
-sub _snmp_write_ap
-{
-  my ($self, $ap, $vbl) = @_;
-
-  my $wlc_ip = $ap->{wlc}->{ip};
-  my $snmp_session = $self->_get_snmp_session($wlc_ip);
-
-  my $r = $snmp_session->set_request(-varbindlist => $vbl);
-  return $r if defined $r;
-
-  # AP may have moved to a different controller
-  $self->_query_aps();
-  my $wlc_ip2 = $ap->{wlc}->{ip};
-  return undef if $wlc_ip eq $wlc_ip2;
-
-  $snmp_session = $self->_get_snmp_session($wlc_ip2);
-  return $snmp_session->set_request(-varbindlist => $vbl);
-}
-
-
-#-------------------------------------------------------------------------------
-# Generic SNMP get for an AP
-
-sub _snmp_get_ap
-{
-  my ($self, $ap, $vbl) = @_;
-
-  my $snmp_session = $self->_get_snmp_session();
-
-  my $r = $snmp_session->get_request(-varbindlist => $vbl);
-  return $r if defined $r;
-
-  return undef;
-##  # AP may have moved to a different controller
-##  $self->_query_aps();
-##  my $wlc_ip2 = $ap->{wlc_ip};
-##  return undef if $wlc_ip eq $wlc_ip2;
-##
-##  $snmp_session = $self->_get_snmp_session($wlc_ip2);
-##  return $snmp_session->get_request(-varbindlist => $vbl);
-}
-
-################################################################################
-# Client functions
-
-#-------------------------------------------------------------------------------
-# add or update values for a Client
-
-sub get_clients
-{
-  my ($self) = @_;
-
-  $self->_query_clients() unless defined $self->{client_list};
-
-  return values %{$self->{client_list}};
-}
-
-
-#-------------------------------------------------------------------------------
-# add or update values for a Client
-
-sub _add_update_client
-{
-  my ($self, $client_mac, $data) = @_;
-
-  unless (defined $self->{client_list}{$client_mac}) {
-    $self->{client_list}{$client_mac} = CiscoWireless::Client->new($client_mac, $self);
-  }
-
-  foreach my $i (keys %$data) {
-    $self->{client_list}{$client_mac}->update($i, $$data{$i});
-  }
-
-#  return $self->{client_list}{$ap_mac};
-}
-
-
-#-------------------------------------------------------------------------------
-# force query the WLC for all connected Clients
-
-sub _query_clients
-{
-  my ($self) = @_;
-  my $snmp_session;
-
-  my $baseoid = ".1.3.6.1.4.1.14179.2.1.4.1.4";
-
-  $self->_get_generic_snmp_table($baseoid,
-    sub {
-      my ($oid, $value) = @_;
-      my $client_mac = get_mac_from_oid($oid);
-      $self->_add_update_client($client_mac,
-        {apmac => convert_snmp_mac_to_hex($value)});
-    });
-}
-
-
-
-################################################################################
-# Rogue functions
-
-#-------------------------------------------------------------------------------
-# get list of all rogues
-
-sub get_rogues
-{
-  my ($self) = @_;
-
-  $self->_query_rogues() unless defined $self->{rogue_list};
-
-  return values %{$self->{rogue_list}};
-}
-
-
-#-------------------------------------------------------------------------------
-# add or update values for a rogue
-
-sub _add_update_rogue
-{
-  my ($self, $rogue_mac) = @_;
-
-  unless (defined $self->{rogue_list}{$rogue_mac}) {
-    $self->{rogue_list}{$rogue_mac} = CiscoWireless::Rogue->new($rogue_mac, $self);
-  }
-
-#  foreach my $i (keys %$data) {
-#    $self->{rogue_list}{$rogue_mac}->update($i, $$data{$i});
-#  }
-
-#  return $self->{rogue_list}{$rogue_mac};
-}
-
-
-#-------------------------------------------------------------------------------
-# force query the WLC for all detected rogues
-
-sub _query_rogues
-{
-  my ($self) = @_;
-  my $snmp_session;
-
-  my $baseoid = ".1.3.6.1.4.1.14179.2.1.7";
-
-  $self->_get_generic_snmp_table($baseoid,
-    sub {
-      my ($oid, $value) = @_;
-      my $rogue_mac = get_mac_from_oid($oid);
-      $self->_add_update_rogue($rogue_mac);
-    });
-}
-
 
 
 ################################################################################
 # SNMP functions
-
 
 
 #-------------------------------------------------------------------------------
@@ -417,6 +208,53 @@ sub _snmp_get
   my $snmp_session = $self->_get_snmp_session();
   return $snmp_session->get_request(-varbindlist => $vbl);
 }
+
+
+#-------------------------------------------------------------------------------
+# Generic SNMP write to an AP
+
+sub _snmp_write_ap
+{
+  my ($self, $ap, $vbl) = @_;
+
+  my $wlc_ip = $ap->{wlc}->{ip};
+  my $snmp_session = $self->_get_snmp_session($wlc_ip);
+
+  my $r = $snmp_session->set_request(-varbindlist => $vbl);
+  return $r if defined $r;
+
+  # AP may have moved to a different controller
+  $self->_query_aps();
+  my $wlc_ip2 = $ap->{wlc}->{ip};
+  return undef if $wlc_ip eq $wlc_ip2;
+
+  $snmp_session = $self->_get_snmp_session($wlc_ip2);
+  return $snmp_session->set_request(-varbindlist => $vbl);
+}
+
+
+#-------------------------------------------------------------------------------
+# Generic SNMP get for an AP
+
+sub _snmp_get_ap
+{
+  my ($self, $ap, $vbl) = @_;
+
+  my $snmp_session = $self->_get_snmp_session();
+
+  my $r = $snmp_session->get_request(-varbindlist => $vbl);
+  return $r if defined $r;
+
+  return undef;
+##  # AP may have moved to a different controller
+##  $self->_query_aps();
+##  my $wlc_ip2 = $ap->{wlc_ip};
+##  return undef if $wlc_ip eq $wlc_ip2;
+##
+##  $snmp_session = $self->_get_snmp_session($wlc_ip2);
+##  return $snmp_session->get_request(-varbindlist => $vbl);
+}
+
 
 
 1;

@@ -3,6 +3,7 @@
 package CiscoWireless::Client;
 
 use Data::Dumper;
+use CiscoWireless::WLC;
 
 use strict;
 use Net::SNMP;
@@ -36,11 +37,13 @@ sub new
   return $self;
 }
 
+
 sub init
 {
   my ($self) = @_;
 
 }
+
 
 sub update
 {
@@ -67,6 +70,7 @@ sub mac
   return $self->{mac};
 }
 
+
 sub wlc
 {
   my ($self) = @_;
@@ -74,12 +78,14 @@ sub wlc
   return $self->{wlc};
 }
 
+
 sub _oidindex
 {
   my ($self) = @_;
 
   return $self->{oidindex};
 }
+
 
 sub _generic_method
 {
@@ -116,6 +122,7 @@ sub _generic_method
 
   return undef;
 }
+
 
 my %_methods = (
     "ipaddress"       => [ ".1.3.6.1.4.1.14179.2.1.4.1.2.",  1, IPADDRESS ],
@@ -162,6 +169,7 @@ my %_methods = (
 #  print "$use_slots\n";
 #}
 
+
 sub get_nearby_aps
 {
   my ($self) = @_;
@@ -199,6 +207,7 @@ sub get_nearby_aps
   return $self->{nearby};
 }
 
+
 sub _get_nearby_ap_mac_from_oid
 {
   my ($self, $oid) = @_;
@@ -210,6 +219,64 @@ sub _get_nearby_ap_mac_from_oid
 
   return lc join("", unpack("(H2)6", pack("C6", split(/\./, $1))));
 }
+
+
+
+################################################################################
+# Client functions for WLC
+
+package CiscoWireless::WLC;
+
+
+#-------------------------------------------------------------------------------
+# add or update values for a Client
+
+sub get_clients
+{
+  my ($self) = @_;
+
+  $self->_query_clients() unless defined $self->{client_list};
+
+  return values %{$self->{client_list}};
+}
+
+
+#-------------------------------------------------------------------------------
+# add or update values for a Client
+
+sub _add_update_client
+{
+  my ($self, $client_mac, $data) = @_;
+
+  unless (defined $self->{client_list}{$client_mac}) {
+    $self->{client_list}{$client_mac} = CiscoWireless::Client->new($client_mac, $self);
+  }
+
+  foreach my $i (keys %$data) {
+    $self->{client_list}{$client_mac}->update($i, $$data{$i});
+  }
+}
+
+
+#-------------------------------------------------------------------------------
+# force query the WLC for all connected Clients
+
+sub _query_clients
+{
+  my ($self) = @_;
+  my $snmp_session;
+
+  my $baseoid = ".1.3.6.1.4.1.14179.2.1.4.1.4";
+
+  $self->_get_generic_snmp_table($baseoid,
+    sub {
+      my ($oid, $value) = @_;
+      my $client_mac = get_mac_from_oid($oid);
+      $self->_add_update_client($client_mac,
+        {apmac => convert_snmp_mac_to_hex($value)});
+    });
+}
+
 
 1;
 

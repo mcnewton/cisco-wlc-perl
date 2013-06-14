@@ -3,7 +3,8 @@
 package CiscoWireless::AP;
 
 use Data::Dumper;
-use CiscoWireless::Util qw/sanitise_mac format_mac/;
+use CiscoWireless::Util;
+use CiscoWireless::WLC;
 
 use strict;
 use Net::SNMP;
@@ -227,14 +228,10 @@ my %_methods = (
   }
 }
 
-#{
-#  foreach my $func (keys %_methods) {
-#    eval "sub $func { return \$_[0]->_generic_method(\"$func\", \"" .
-#          $_methods{$func}[0] . "\", \$_[1], " . $_methods{$func}[1] . ", " .
-#          $_methods{$func}[2] . ");}"
-#  }
-#}
 
+
+################################################################################
+# RRD functions (in development)
 
 sub get_rrd_create
 {
@@ -250,34 +247,63 @@ sub get_rrd_create
 
 
 
-#sub location
-#{
-#  my ($self, $new) = @_;
-#  my $oid = ".1.3.6.1.4.1.14179.2.2.1.1.4." . $self->{oidindex};
-#  my $r;
-#
-#  unless (defined($new)) {
-#    return $self->{location} if defined $self->{location};
-#
-#    $r = $self->{wlc}->_snmp_get_ap($self, [$oid]);
-#    return undef unless defined $r;
-#    $self->{location} = $$r{$oid} || undef;
-#    return $self->{location};
-#  }
-#
-#  $r = $self->{wlc}->_snmp_write_ap($self, [$oid, OCTET_STRING, $new]);
-#
-#  if (defined $r) {
-#    if (defined $$r{$oid}) {
-#      $self->{location} = $$r{$oid};
-#      return $self->{location};
-#    } else {
-#      carp "unknown result from snmp set request=$oid response=$$r[0] ($$r[1])";
-#    }
-#  }
-#
-#  return undef;
-#}
+################################################################################
+# AP functions for WLC
+
+package CiscoWireless::WLC;
+
+
+#-------------------------------------------------------------------------------
+# get list of all APs
+
+sub get_aps
+{
+  my ($self) = @_;
+
+  $self->_query_aps() unless defined $self->{ap_list};
+
+  return values %{$self->{ap_list}};
+}
+
+
+#-------------------------------------------------------------------------------
+# add or update values for an AP
+
+sub _add_update_ap
+{
+  my ($self, $ap_mac, $data) = @_;
+
+  unless (defined $self->{ap_list}{$ap_mac}) {
+    $self->{ap_list}{$ap_mac} = CiscoWireless::AP->new($ap_mac, $self);
+  }
+
+  foreach my $i (keys %$data) {
+    $self->{ap_list}{$ap_mac}->update($i, $$data{$i});
+  }
+
+#  return $self->{ap_list}{$ap_mac};
+}
+
+
+#-------------------------------------------------------------------------------
+# force query the WLC for all connected APs
+
+sub _query_aps
+{
+  my ($self) = @_;
+  my $snmp_session;
+
+  my $baseoid = ".1.3.6.1.4.1.14179.2.2.1.1.3";
+
+  $self->_get_generic_snmp_table($baseoid,
+    sub {
+      my ($oid, $value) = @_;
+      my $ap_mac = get_mac_from_oid($oid);
+      $self->_add_update_ap($ap_mac, {name => $value});
+    });
+}
+
+
 
 1;
 
