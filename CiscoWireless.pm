@@ -8,6 +8,7 @@ use Net::SNMP;
 use CiscoWireless::AP;
 use CiscoWireless::WLC;
 use CiscoWireless::Client;
+use CiscoWireless::Rogue;
 
 use strict;
 use vars qw($VERSION @ISA @EXPORT);
@@ -233,6 +234,25 @@ sub _query_wlcs_clients
   foreach my $wlc (keys %{$self->{wlc_list}}) {
     $self->{wlc_list}{$wlc}->_query_clients();
   }
+}
+
+
+################################################################################
+# Rogue functions
+
+#-------------------------------------------------------------------------------
+# get_rogues
+
+sub get_rogues
+{
+  my ($self) = @_;
+  my @allrogues = ();
+
+  foreach my $wlc (values %{$self->{wlc_list}}) {
+    push @allrogues, $wlc->get_rogues();
+  }
+
+  return \@allrogues;
 }
 
 
