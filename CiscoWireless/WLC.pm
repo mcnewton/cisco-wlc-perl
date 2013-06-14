@@ -3,6 +3,7 @@
 package CiscoWireless::WLC;
 
 use Data::Dumper;
+use CiscoWireless::Util;
 
 use strict;
 use Net::SNMP;
@@ -60,28 +61,6 @@ sub ip
   $self->{ip} = $new_ip if defined $new_ip;
 
   return $current_ip;
-}
-
-
-sub _get_snmp_session
-{
-  my ($self) = shift;
-
-  return $self->{snmp_session} if defined $self->{snmp_session};
-
-  my ($session, $error) = Net::SNMP->session(
-                            -version => $self->{snmp_version},
-                            -hostname => $self->{ip},
-                            -community => $self->{snmp_community});
-
-  if (!defined $session) {
-    carp "error getting snmp session to " . $self->{ip} . " ($error)";
-    return undef;
-  }
-
-  $self->{snmp_session} = $session;
-
-  return $session;
 }
 
 
@@ -195,7 +174,7 @@ sub _query_aps
   $self->_get_generic_snmp_table($baseoid,
     sub {
       my ($oid, $value) = @_;
-      my $ap_mac = _get_mac_from_oid($oid);
+      my $ap_mac = get_mac_from_oid($oid);
       $self->_add_update_ap($ap_mac, {name => $value});
     });
 }
@@ -294,9 +273,9 @@ sub _query_clients
   $self->_get_generic_snmp_table($baseoid,
     sub {
       my ($oid, $value) = @_;
-      my $client_mac = _get_mac_from_oid($oid);
+      my $client_mac = get_mac_from_oid($oid);
       $self->_add_update_client($client_mac,
-        {apmac => CiscoWireless::_convert_snmp_mac_to_hex($value)});
+        {apmac => convert_snmp_mac_to_hex($value)});
     });
 }
 
@@ -350,14 +329,42 @@ sub _query_rogues
   $self->_get_generic_snmp_table($baseoid,
     sub {
       my ($oid, $value) = @_;
-      my $rogue_mac = _get_mac_from_oid($oid);
+      my $rogue_mac = get_mac_from_oid($oid);
       $self->_add_update_rogue($rogue_mac);
     });
 }
 
 
+
 ################################################################################
 # SNMP functions
+
+
+
+#-------------------------------------------------------------------------------
+# Get SNMP session for this WLC
+
+sub _get_snmp_session
+{
+  my ($self) = shift;
+
+  return $self->{snmp_session} if defined $self->{snmp_session};
+
+  my ($session, $error) = Net::SNMP->session(
+                            -version => $self->{snmp_version},
+                            -hostname => $self->{ip},
+                            -community => $self->{snmp_community});
+
+  if (!defined $session) {
+    carp "error getting snmp session to " . $self->{ip} . " ($error)";
+    return undef;
+  }
+
+  $self->{snmp_session} = $session;
+
+  return $session;
+}
+
 
 #-------------------------------------------------------------------------------
 # Generic read SNMP table
@@ -387,31 +394,6 @@ sub _get_generic_snmp_table
   return $count;
 }
 
-
-#-------------------------------------------------------------------------------
-# Get MAC address from OID (last six octets)
-
-sub _get_mac_from_oid
-{
-  my ($oid, $base) = @_;
-  my $octets;
-
-  if (defined $base) {
-    unless ($oid =~ s/^$base.(\d+(?:\.\d+){5})$//) {
-      carp "cannot extract mac from oid ($oid) with base ($base)";
-      return undef;
-    }
-    $octets = $1;
-  } else {
-    unless ($oid =~ /(\d+(?:\.\d+){5})$/) {
-      carp "cannot extract mac from oid ($oid)";
-      return undef;
-    }
-    $octets = $1;
-  }
-
-  return lc join("", unpack("(H2)6", pack("C6", split(/\./, $octets))));
-}
 
 #-------------------------------------------------------------------------------
 # Generic SNMP write

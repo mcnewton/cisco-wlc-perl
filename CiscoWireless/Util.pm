@@ -8,13 +8,14 @@ use Carp;
 use Exporter;
 
 @ISA = qw(Exporter);
-@EXPORT = qw(sanitise_mac format_mac);
+@EXPORT = qw(sanitise_mac format_mac convert_snmp_mac_to_hex get_mac_from_oid);
 $VERSION = '0.01';
 
 
 
 ################################################################################
 # MAC address functions
+
 
 #-------------------------------------------------------------------------------
 # Sanitise all sorts of formats of MAC address to lowercase aabbccddeeff format
@@ -54,6 +55,9 @@ sub sanitise_mac
 
 #-------------------------------------------------------------------------------
 # Format mac with user-supplied separator
+#
+# $mac should be supplied as 12 char hex
+# $sep should be ':', '-' or '.'
 
 sub format_mac
 {
@@ -71,6 +75,58 @@ sub format_mac
 
   croak "unknown mac separator '$sep'";
 }
+
+
+#-------------------------------------------------------------------------------
+# Convert MAC returned from SNMP to hex
+#
+# Tidies up whatever sort of junk for a MAC address comes from an SNMP get
+
+sub convert_snmp_mac_to_hex
+{
+  my $inmac = shift;
+
+  if ($inmac =~ /^(?:0x)?([0-9a-f]{12})$/) {
+    # maybe mac is string possibly beginning 0x? if so, return without 0x
+    return lc $1;
+  }
+
+  if ($inmac =~ /^.{6}$/s) {
+    # if MAC consists of exactly six chars, return hex representation
+    return lc join("", unpack("H2H2H2H2H2H2", $inmac));
+  }
+
+  # dunno what it is...
+  carp "unknown mac address format '$inmac'";
+  return undef;
+}
+
+
+#-------------------------------------------------------------------------------
+# Get MAC address from OID (last six octets)
+
+sub get_mac_from_oid
+{
+  my ($oid, $base) = @_;
+  my $octets;
+
+  if (defined $base) {
+    unless ($oid =~ s/^$base.(\d+(?:\.\d+){5})$//) {
+      carp "cannot extract mac from oid ($oid) with base ($base)";
+      return undef;
+    }
+    $octets = $1;
+  } else {
+    unless ($oid =~ /(\d+(?:\.\d+){5})$/) {
+      carp "cannot extract mac from oid ($oid)";
+      return undef;
+    }
+    $octets = $1;
+  }
+
+  return lc join("", unpack("(H2)6", pack("C6", split(/\./, $octets))));
+}
+
 
 1;
 

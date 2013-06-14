@@ -10,6 +10,8 @@ use CiscoWireless::WLC;
 use CiscoWireless::Client;
 use CiscoWireless::Rogue;
 
+use CiscoWireless::Util;
+
 use strict;
 use vars qw($VERSION @ISA @EXPORT);
 use Carp;
@@ -70,34 +72,6 @@ sub add_wlc
 
   1;
 }
-
-##-------------------------------------------------------------------------------
-## _get_snmp_session
-#
-#sub _get_snmp_session
-#{
-#  my ($self, $wlc_ip) = @_;
-#
-#  return undef unless defined $self->{wlc_list}{$wlc_ip};
-#
-#  my $wlc = $self->{wlc_list}{$wlc_ip};
-#
-#  return $$wlc{snmp_session} if defined $$wlc{snmp_session};
-#
-#  my ($session, $error) = Net::SNMP->session(
-#                            -version => $$wlc{snmp_version},
-#                            -hostname => $wlc_ip,
-#                            -community => $$wlc{snmp_community});
-#
-#  if (!defined $session) {
-#    carp "error getting snmp session to $wlc_ip ($error)";
-#    return undef;
-#  }
-#
-#  $$wlc{snmp_session} = $session;
-#
-#  return $session;
-#}
 
 
 ################################################################################
@@ -254,129 +228,6 @@ sub get_rogues
 
   return \@allrogues;
 }
-
-
-################################################################################
-# SNMP functions
-
-#-------------------------------------------------------------------------------
-# Convert MAC returned from SNMP to hex
-
-sub _convert_snmp_mac_to_hex
-{
-  my $inmac = shift;
-
-  if ($inmac =~ /^(?:0x)?([0-9a-f]{12})$/) {
-    # maybe mac is string possibly beginning 0x? if so, return without 0x
-    return lc $1;
-  }
-
-  if ($inmac =~ /^.{6}$/s) {
-    # if MAC consists of exactly six chars, return hex representation
-    return lc join("", unpack("H2H2H2H2H2H2", $inmac));
-  }
-
-  # dunno what it is...
-  return undef;
-}
-
-
-#-------------------------------------------------------------------------------
-# Generic read SNMP table
-
-#sub _get_generic_snmp_table
-#{
-#  my ($self, $session, $tablebase, $callback) = @_;
-#  my $count = 0;
-#  my $oid;
-#
-#  my @args = (-varbindlist => [$tablebase]);
-#
-#  while (defined($session->get_next_request(@args))) {
-#    $oid = ($session->var_bind_names())[0];
-#
-#    last unless Net::SNMP::oid_base_match($tablebase, $oid);
-#
-#    my $value = $session->var_bind_list()->{$oid};
-#    &$callback($oid, $value);
-#    $count++;
-#
-#    @args = (-varbindlist => [$oid]);
-#  }
-#
-#  return $count;
-#}
-
-
-#-------------------------------------------------------------------------------
-# Generic SNMP write to an AP
-
-#sub _snmp_write_ap
-#{
-#  my ($self, $ap, $vbl) = @_;
-#
-#  my $wlc_ip = $ap->{wlc_ip};
-#  my $snmp_session = $self->_get_snmp_session($wlc_ip);
-#
-#  my $r = $snmp_session->set_request(-varbindlist => $vbl);
-#  return $r if defined $r;
-#
-#  # AP may have moved to a different controller
-#  $self->_query_wlcs_aps();
-#  my $wlc_ip2 = $ap->{wlc_ip};
-#  return undef if $wlc_ip eq $wlc_ip2;
-#
-#  $snmp_session = $self->_get_snmp_session($wlc_ip2);
-#  return $snmp_session->set_request(-varbindlist => $vbl);
-#}
-
-#-------------------------------------------------------------------------------
-# Generic SNMP write
-
-#sub _snmp_get_ap
-#{
-#  my ($self, $ap, $vbl) = @_;
-#
-#  my $wlc_ip = $ap->{wlc_ip};
-#  my $snmp_session = $self->_get_snmp_session($wlc_ip);
-#
-#  my $r = $snmp_session->get_request(-varbindlist => $vbl);
-#  return $r if defined $r;
-#
-#  # AP may have moved to a different controller
-#  $self->_query_wlcs_aps();
-#  my $wlc_ip2 = $ap->{wlc_ip};
-#  return undef if $wlc_ip eq $wlc_ip2;
-#
-#  $snmp_session = $self->_get_snmp_session($wlc_ip2);
-#  return $snmp_session->get_request(-varbindlist => $vbl);
-#}
-
-
-##-------------------------------------------------------------------------------
-## Get MAC address from OID (last six octets)
-#
-#sub _get_mac_from_oid
-#{
-#  my ($oid, $base) = @_;
-#  my $octets;
-#
-#  if (defined $base) {
-#    unless ($oid =~ s/^$base.(\d+(?:\.\d+){5})$//) {
-#      carp "cannot extract mac from oid ($oid) with base ($base)";
-#      return undef;
-#    }
-#    $octets = $1;
-#  } else {
-#    unless ($oid =~ /(\d+(?:\.\d+){5})$/) {
-#      carp "cannot extract mac from oid ($oid)";
-#      return undef;
-#    }
-#    $octets = $1;
-#  }
-#
-#  return lc join("", unpack("(H2)6", pack("C6", split(/\./, $octets))));
-#}
 
 
 1;
