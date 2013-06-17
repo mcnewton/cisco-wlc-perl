@@ -24,26 +24,23 @@ $VERSION = '0.01';
 
 sub new
 {
-  my ($class, %data) = @_;
+  my ($class, $data) = @_;
 
   my $self = {
     wlc_list    => {},
     client_list => {},
-    cache_file  => undef,
-    cache_data  => undef,
+    cache       => undef,
   };
 
+  $self->{cache} = delete $data->{cache} if $data->{cache};
+  croak "Unknown arguments" if scalar %$data;
+
   bless $self, $class;
-  $self->init();
 
   return $self;
 }
 
-sub init
-{
-  my ($self) = @_;
 
-}
 
 ################################################################################
 # WLC functions
@@ -70,8 +67,12 @@ sub add_wlc
   $self->{wlc_list}{$wlc_ip} = $wlc;
   $wlc->update("_ciscowireless", $self);
 
+  # pull WLC values from cache if set
+  $wlc->init_cache($self->{cache}) if defined $self->{cache};
+
   1;
 }
+
 
 
 ################################################################################

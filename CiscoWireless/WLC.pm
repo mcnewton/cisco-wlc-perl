@@ -5,6 +5,9 @@ package CiscoWireless::WLC;
 use Data::Dumper;
 use CiscoWireless::Util;
 
+# use CiscoWireless::Cache;
+
+
 use strict;
 use Net::SNMP;
 use vars qw($VERSION @ISA @EXPORT);
@@ -25,6 +28,7 @@ sub new
   my $self = {
     ip               => $ip,
     _ciscowireless   => undef,
+    _cache           => undef,
     name             => undef,
     snmp_community   => "public",
     snmp_version     => 1,
@@ -41,6 +45,28 @@ sub new
   bless $self, $class;
 
   return $self;
+}
+
+sub init_cache
+{
+  my ($self, $cache) = @_;
+
+  $self->{_cache} = $cache;
+
+  $self->{_cachekey} = $cache->get_key_name("wlc", $self->{ip});
+
+  my $subkeys = $cache->get_all_subkeys($self->{_cachekey});
+
+print "a--\n";
+print Dumper $subkeys;
+print "b--\n";
+
+  foreach my $sk (@$subkeys) {
+    if (exists $self->{$sk}) {
+      my $cv = $cache->get_subkey($self->{_cachekey}, $sk);
+      $self->{$sk} = $cv if defined $cv;
+    }
+  }
 }
 
 
@@ -101,6 +127,21 @@ sub _generic_method
   return undef;
 }
 
+# 1 week = 604800
+# 2 days = 172800
+# 1 day = 86400
+# 
+
+my %_cachelife = (
+    "name"             => 604800,
+    "model"            => 604800,
+    "serial"           => 604800,
+    "burnedinmac"      => 604800,
+    "manufacturer"     => 604800,
+    "productname"      => 604800,
+    "version"          => 604800,
+    "maxaps"           => 86400,
+  );
 
 my %_methods = (
     "name"             => [ ".1.3.6.1.2.1.1.5.0",             0, OCTET_STRING],
@@ -119,9 +160,20 @@ my %_methods = (
 
 {
   foreach my $func (keys %_methods) {
-    eval "sub $func { return \$_[0]->_generic_method(\"$func\", \"" .
-          $_methods{$func}[0] . "\", \$_[1], " . $_methods{$func}[1] . ", " .
-          $_methods{$func}[2] . ");}"
+
+#    eval "sub $func { return \$_[0]->_generic_method(\"$func\", \"" .
+#          $_methods{$func}[0] . "\", \$_[1], " . $_methods{$func}[1] . ", " .
+#          $_methods{$func}[2] . ");}"
+
+    eval "sub $func {
+            return \$_[0]->_generic_method(
+                               \"$func\", 
+                               \"" .  $_methods{$func}[0] . "\",
+                               \$_[1],
+                               " . $_methods{$func}[1] . ",
+                               " . $_methods{$func}[2] . "
+                           );
+          }";
   }
 }
 
