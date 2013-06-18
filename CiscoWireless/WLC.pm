@@ -29,6 +29,7 @@ sub new
     ip               => $ip,
     _ciscowireless   => undef,
     _cache           => undef,
+    _cachelife       => \%CiscoWireless::WLC::_cachelife,
     name             => undef,
     snmp_community   => "public",
     snmp_version     => 1,
@@ -75,6 +76,22 @@ sub update
   my ($self, $key, $value) = @_;
 
   $self->{$key} = $value;
+
+  $self->cache_insert($key, $value);
+}
+
+
+sub cache_insert
+{
+  my ($self, $subkey, $value) = @_;
+
+  return unless defined $self->{_cache};
+  return unless defined $self->{_cachelife};
+  return unless defined $self->{_cachelife}->{$subkey};
+
+  print "key $subkey life " . $self->{_cachelife}->{$subkey} . "\n";
+
+  $self->{_cache}->set_subkey($self->{_cachekey}, $subkey, $value, $self->{_cachelife}->{$subkey});
 }
 
 
@@ -127,12 +144,13 @@ sub _generic_method
   return undef;
 }
 
+
 # 1 week = 604800
 # 2 days = 172800
 # 1 day = 86400
 # 
 
-my %_cachelife = (
+our %_cachelife = (
     "name"             => 604800,
     "model"            => 604800,
     "serial"           => 604800,
@@ -142,6 +160,7 @@ my %_cachelife = (
     "version"          => 604800,
     "maxaps"           => 86400,
   );
+
 
 my %_methods = (
     "name"             => [ ".1.3.6.1.2.1.1.5.0",             0, OCTET_STRING],

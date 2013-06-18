@@ -16,21 +16,17 @@ $VERSION = '0.01';
 
 sub new
 {
-  my ($class, $type, $data) = @_;
-
-  croak "Bad CiscoWireless::Cache type '$type'" unless $type eq "dir";
+  my ($class, $data) = @_;
 
   my $self = {
-    type => $type,
+    memcache => {},
   };
 
-  if ($type eq "dir") {
-    $$self{location} = delete $$data{location} if $$data{location};
-    croak "dir location not set" unless defined($$self{location});
+  $$self{location} = delete $$data{location} if $$data{location};
+  croak "dir location not set" unless defined($$self{location});
 
-    if (! -d $$self{location}) {
-      croak "directory '$$self{location}' does not exist";
-    }
+  if (! -d $$self{location}) {
+    croak "directory '$$self{location}' does not exist";
   }
 
   bless $self, $class;
@@ -110,11 +106,57 @@ sub get_subkey
 # const...
 
   my $buffer;
-  my $size = read($fh, $buffer, 4096);
 
-  return undef if ($size == 0);
+  # check expiry time
+  my $size = read($fh, $buffer, 20);
+  return undef if ($size != 20);
+  $buffer =~ s/ +$//;
+  if ($buffer < time()) {
+    unlink("$keypath/$subkey"); # remove cache file??
+    return undef;
+  }
+
+  # get length
+  $size = read($fh, $buffer, 20);
+  return undef if ($size != 20);
+  $buffer =~ s/ +$//;
+  my $length = $buffer;
+
+  # get data, check length
+  $size = read($fh, $buffer, 4096);
+  return undef if ($size != $length);
 
   return $buffer;
+}
+
+
+sub set_subkey
+{
+  my ($self, $key, $subkey, $value, $expiry) = @_;
+  my $fh;
+
+  my $keypath = $self->get_keypath($key);
+  if (! -d $keypath) {
+    mkdir $keypath || return undef;
+  }
+
+  my $expirytime = time() + $expiry;
+
+  open $fh, ">", $keypath . "/" . $subkey || carp "unable to write $keypath/$subkey";
+  binmode $fh;
+
+  # write expiry time
+  my $buffer = $expirytime . " " x (20 - length($expirytime));
+  print $fh $buffer;
+
+  # write length
+  $buffer = length($value) . " " x (20 - length(length($value)));
+  print $fh $buffer;
+
+  # write value
+  print $fh $value;
+
+  close $fh;
 }
 
 
