@@ -5,7 +5,7 @@ package CiscoWireless::WLC;
 use Data::Dumper;
 use CiscoWireless::Util;
 
-# use CiscoWireless::Cache;
+use CiscoWireless::Cache;
 
 
 use strict;
@@ -14,7 +14,7 @@ use vars qw($VERSION @ISA @EXPORT);
 use Carp;
 use Exporter;
 
-@ISA = qw(Exporter);
+@ISA = qw(Exporter CiscoWireless::Cache::Util);
 @EXPORT = qw();
 $VERSION = '0.01';
 
@@ -28,14 +28,15 @@ sub new
   my $self = {
     ip               => $ip,
     _ciscowireless   => undef,
-    _cache           => undef,
-    _cachelife       => \%CiscoWireless::WLC::_cachelife,
     name             => undef,
     snmp_community   => "public",
     snmp_version     => 1,
     ap_list          => undef,
     client_list      => undef,
     auto_requery_aps => 1, # try and find new controller if I don't have requested AP
+
+    _cache           => undef,
+    _cachelife       => \%CiscoWireless::WLC::_cachelife,
   };
 
   $$self{snmp_community} = delete $$data{community} if $$data{community};
@@ -48,26 +49,15 @@ sub new
   return $self;
 }
 
+
 sub init_cache
 {
   my ($self, $cache) = @_;
 
   $self->{_cache} = $cache;
-
   $self->{_cachekey} = $cache->get_key_name("wlc", $self->{ip});
 
-  my $subkeys = $cache->get_all_subkeys($self->{_cachekey});
-
-print "a--\n";
-print Dumper $subkeys;
-print "b--\n";
-
-  foreach my $sk (@$subkeys) {
-    if (exists $self->{$sk}) {
-      my $cv = $cache->get_subkey($self->{_cachekey}, $sk);
-      $self->{$sk} = $cv if defined $cv;
-    }
-  }
+  $self->_init_cache();
 }
 
 
@@ -76,22 +66,8 @@ sub update
   my ($self, $key, $value) = @_;
 
   $self->{$key} = $value;
-
   $self->cache_insert($key, $value);
-}
-
-
-sub cache_insert
-{
-  my ($self, $subkey, $value) = @_;
-
-  return unless defined $self->{_cache};
-  return unless defined $self->{_cachelife};
-  return unless defined $self->{_cachelife}->{$subkey};
-
-  print "key $subkey life " . $self->{_cachelife}->{$subkey} . "\n";
-
-  $self->{_cache}->set_subkey($self->{_cachekey}, $subkey, $value, $self->{_cachelife}->{$subkey});
+  return $value;
 }
 
 
@@ -120,6 +96,8 @@ sub _generic_method
 
     return undef unless defined $r;
     $self->{$name} = $$r{$oid} || undef;
+
+    $self->cache_insert($name, $self->{$name});
     return $self->{$name};
   }
 

@@ -5,6 +5,7 @@ package CiscoWireless::AP;
 use Data::Dumper;
 use CiscoWireless::Util;
 use CiscoWireless::WLC;
+use CiscoWireless::Cache;
 
 use strict;
 use Net::SNMP;
@@ -12,7 +13,7 @@ use vars qw($VERSION @ISA @EXPORT);
 use Carp;
 use Exporter;
 
-@ISA = qw(Exporter);
+@ISA = qw(Exporter CiscoWireless::Cache::Util);
 @EXPORT = qw();
 $VERSION = '0.01';
 
@@ -25,31 +26,43 @@ sub new
   croak "invalid mac address format ($mac)" unless defined $smac;
 
   my $self = {
-    mac         => $smac,
-    wlc         => $wlc,
-    oidindex    => join(".", map {hex $_} unpack("(A2)6", $smac)),
-    name        => undef,
-    ethernetmac => undef,
+    mac              => $smac,
+    wlc              => $wlc,
+    oidindex         => join(".", map {hex $_} unpack("(A2)6", $smac)),
+    name             => undef,
+    ethernetmac      => undef,
+
+    _cache           => undef,
+    _cachelife       => \%CiscoWireless::AP::_cachelife,
   };
 
   bless $self, $class;
-  $self->init();
 
   return $self;
 }
 
-sub init
-{
-  my ($self) = @_;
 
+sub init_cache
+{
+  my ($self, $cache) = @_;
+
+  $self->{_cache} = $cache;
+  $self->{_cachekey} = $cache->get_key_name("ap", $self->{mac});
+
+  $self->_init_cache();
 }
+
 
 sub update
 {
   my ($self, $key, $value) = @_;
 
   $self->{$key} = $value;
+  my $h = $self->cache_insert($key, $value);
+
+  return $value;
 }
+
 
 #sub name
 #{
@@ -86,8 +99,13 @@ sub ethernetmac
   if (!defined($self->{ethernetmac})) {
     my $oid = ".1.3.6.1.4.1.14179.2.2.1.1.33." . $self->{oidindex};
     my $r = $self->{wlc}->_snmp_get_ap($self, [$oid]);
-    $self->{ethernetmac} = sanitise_mac($$r{$oid}); # may be undef
-    $self->{ethernetmac} =~ s/^0x// if defined($self->{ethernetmac});
+    $r = sanitise_mac($$r{$oid}); # may be undef
+    return undef unless defined $r;
+    $r =~ s/^0x//;
+    $self->update("ethernetmac", $r);
+
+#    $self->{ethernetmac} = sanitise_mac($$r{$oid}); # may be undef
+#    $self->{ethernetmac} =~ s/^0x// if defined($self->{ethernetmac});
   }
 
   return format_mac($self->{ethernetmac}, $sep);
@@ -122,15 +140,17 @@ sub _generic_method
     if (!$use_slots) {
       $r = $self->{wlc}->_snmp_get_ap($self, [$oid]);
       return undef unless defined $r;
-      $self->{$name} = $$r{$oid} || undef;
-      return $self->{$name};
+      return $self->update($name, $$r{$oid} || undef);
+#      $self->{$name} = $$r{$oid} || undef;
+#      return $self->{$name};
     } else {
       my $slots = $self->numslots() || 1;
       my %ra = ();
       my $got_result = 0;
 
+# todo: can't currently cache slot-based oids
+
       for (my $slot = 0; $slot < $slots; $slot++) {
-#        print $oid . ".$slot\n";
         $r = $self->{wlc}->_snmp_get_ap($self, [$oid . ".$slot"]);
         $ra{$slot} = undef;
         if (defined $r) {
@@ -149,8 +169,8 @@ sub _generic_method
     carp "currently unable to write to slot-based oid";
     return undef;
 
-    # this can be fixed by accepting hashref as returned above, and
-    # writing with a loop like above
+    # todo: this can be fixed by accepting hashref as returned
+    # above, and writing with a loop like above
   }
 
   if (defined $rw and !$rw) {
@@ -162,8 +182,9 @@ sub _generic_method
 
   if (defined $r) {
     if (defined $$r{$oid}) {
-      $self->{$name} = $$r{$oid};
-      return $self->{$name};
+       return $self->update($name, $$r{$oid});
+#      $self->{$name} = $$r{$oid};
+#      return $self->{$name};
     } else {
       carp "unknown result from snmp set request=$oid response=$$r[0] ($$r[1])";
     }
@@ -172,6 +193,34 @@ sub _generic_method
   return undef;
 }
 
+
+# 1 week = 604800
+# 2 days = 172800
+# 1 day = 86400
+# 
+
+our %_cachelife = (
+    "numslots"        => 604800,
+    "name"            => 7200,
+    "location"        => 7200,
+    "operationstatus" => 600,
+    "softwareversion" => 172800,
+    "bootversion"     => 172800,
+    "primarywlc"      => 7200,
+    "model"           => 604800,
+    "serialnumber"    => 604800,
+    "ipaddress"       => 86400,
+    "secondarywlc"    => 7200,
+    "tertiarywlc"     => 7200,
+    "isstaticip"      => 86400,
+    "netmask"         => 86400,
+    "gateway"         => 86400,
+    "staticipaddress" => 86400,
+    "apgroup"         => 86400,
+    "adminstatus"     => 7200,
+
+#    "ap_list"         => 300,
+  );
 
 # oidprefix, use_slots, rw, type
 
@@ -275,6 +324,7 @@ sub _add_update_ap
 
   unless (defined $self->{ap_list}{$ap_mac}) {
     $self->{ap_list}{$ap_mac} = CiscoWireless::AP->new($ap_mac, $self);
+    $self->{ap_list}{$ap_mac}->init_cache($self->{_cache}) if defined $self->{_cache};
   }
 
   foreach my $i (keys %$data) {

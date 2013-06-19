@@ -51,43 +51,12 @@ sub get_all_subkeys
   my $keypath = $self->get_keypath($key);
 
   return undef if (! -d $keypath);
-  return undef if (! -r $keypath . "/subkeys");
 
-  open $fh, "<", $keypath . "/subkeys" || return undef;
-
-  while (my $line = <$fh>) {
-    chomp $line;
-    if (-r $keypath . "/$line") {
-      push @subkeys, $line;
-    } else {
-      $invalid = 1;
-    }
-  }
-
-  close $fh;
-
-  if ($invalid) {
-    carp "invalid subkeys file for $key - fixing";
-    $self->write_subkeys($key, \@subkeys);
-  }
+  opendir $fh, $keypath || return undef;
+  @subkeys = grep { ! /^\./ && -f "$keypath/$_" } readdir $fh;
+  closedir $fh;
 
   return \@subkeys;
-}
-
-
-sub write_subkeys
-{
-  my ($self, $key, $subkeys) = @_;
-  my $fh;
-
-  my $keypath = $self->get_keypath($key);
-  return undef if (! -d $keypath);
-
-  open $fh, ">", $keypath . "/subkeys" || carp "unable to open $keypath/subkeys";
-  foreach my $sk (@$subkeys) {
-    print $fh "$sk\n";
-  }
-  close $fh;
 }
 
 
@@ -136,6 +105,15 @@ sub set_subkey
   my $fh;
 
   my $keypath = $self->get_keypath($key);
+
+  # trying to flush?
+  if (!defined($value)) {
+    if (-e "$keypath/$subkey") {
+      unlink("$keypath/$subkey");
+      return;
+    }
+  }
+
   if (! -d $keypath) {
     mkdir $keypath || return undef;
   }
@@ -175,6 +153,48 @@ sub get_key_name
   my ($self, $type, $scalar) = @_;
 
   return $type . join("",unpack("(H2)*", $scalar));
+}
+
+
+
+################################################################################
+# Cache utility methods for other classes
+
+package CiscoWireless::Cache::Util;
+
+
+#-------------------------------------------------------------------------------
+# _init_cache - pull in cache values
+
+sub _init_cache
+{
+  my ($self) = @_;
+
+  my $subkeys = $self->{_cache}->get_all_subkeys($self->{_cachekey});
+
+  foreach my $subkey (@$subkeys) {
+    if (exists $self->{_cachelife}->{$subkey}) {
+      my $cacheval = $self->{_cache}->get_subkey($self->{_cachekey}, $subkey);
+      $self->{$subkey} = $cacheval if defined $cacheval;
+    }
+  }
+}
+
+
+#-------------------------------------------------------------------------------
+# cache_insert - write to cache
+
+sub cache_insert
+{
+  my ($self, $subkey, $value) = @_;
+
+  return unless defined $self->{_cache};
+  return unless defined $self->{_cachelife};
+  return unless defined $self->{_cachelife}->{$subkey};
+
+#  print "key $subkey life " . $self->{_cachelife}->{$subkey} . "\n";
+
+  $self->{_cache}->set_subkey($self->{_cachekey}, $subkey, $value, $self->{_cachelife}->{$subkey});
 }
 
 
