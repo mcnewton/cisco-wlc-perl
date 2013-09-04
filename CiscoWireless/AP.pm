@@ -263,7 +263,11 @@ my %_methods = (
     "bsnAPIfLoadChannelUtilization" => [ ".1.3.6.1.4.1.14179.2.2.13.1.3.", 1, 0, INTEGER ],
     "bsnAPIfLoadNumOfClients"       => [ ".1.3.6.1.4.1.14179.2.2.13.1.4.", 1, 0, INTEGER ],
     "bsnAPIfPoorSNRClients"         => [ ".1.3.6.1.4.1.14179.2.2.13.1.5.", 1, 0, INTEGER ],
-  
+
+# CISCO-LWAPP-AP::CLApEntry
+    "uptime"                        => [ ".1.3.6.1.4.1.9.9.513.1.1.1.1.6.",  0, 0, INTEGER ],
+    "jointime"                      => [ ".1.3.6.1.4.1.9.9.513.1.1.1.1.7.",  0, 0, INTEGER ],
+
   );
 
 # INTEGER, INTEGER32, OCTET_STRING, OBJECT_IDENTIFIER, IPADDRESS, COUNTER, COUNTER32, GAUGE,
