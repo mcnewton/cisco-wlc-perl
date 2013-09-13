@@ -111,6 +111,51 @@ sub ethernetmac
   return format_mac($self->{ethernetmac}, $sep);
 }
 
+sub cdpneighbour
+{
+  my ($self) = @_;
+
+  my $obase = ".1.3.6.1.4.1.9.9.623.1.3.1.1.";
+
+  my $oids = { $obase . "6."  . $self->{oidindex} . ".1" => "hostname",
+               $obase . "8."  . $self->{oidindex} . ".1" => "ip",
+               $obase . "9."  . $self->{oidindex} . ".1" => "port",
+               $obase . "10." . $self->{oidindex} . ".1" => "version",
+             };
+
+  my %out;
+
+  my @snmpoid;
+
+  foreach my $oid (keys %$oids) {
+    if (defined $self->{"cdpn_" . $$oids{$oid}}) {
+      $out{$$oids{$oid}} = $self->{"cdpn_" . $$oids{$oid}};
+    } else {
+      push @snmpoid, $oid;
+    }
+  }
+
+  if (scalar @snmpoid) {
+    my $r = $self->{wlc}->_snmp_get_ap($self, \@snmpoid);
+
+    foreach my $oid (keys %$r) {
+      if (defined($$oids{$oid})) {
+        $out{$$oids{$oid}} = $$r{$oid};
+        if ($$oids{$oid} eq 'ip') {
+          my $ip = $$r{$oid};
+          $ip =~ s/^0x//;
+          $out{ip} = join ".", unpack "C4", pack "H8", $ip;
+        }
+        $self->update("cdpn_" . $$oids{$oid}, $out{$$oids{$oid}});
+      }
+    }
+  }
+
+  $self->{cdp} = \%out;
+
+  return \%out;
+}
+
 sub wlc
 {
   my ($self) = @_;
