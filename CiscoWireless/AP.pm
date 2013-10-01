@@ -239,6 +239,44 @@ sub _generic_method
 }
 
 
+
+sub _ethernet_method
+{
+  my ($self, $name, $new, $opts) = @_;
+
+  my ($oidprefix, $cache, $rw, $type) = @$opts;
+  my $oid = $oidprefix . $self->{oidindex} . ".0";
+  my $r;
+
+  unless (defined($new)) {
+    return $self->{$name} if $cache and defined $self->{$name};
+
+    $r = $self->{wlc}->_snmp_get_ap($self, [$oid]);
+    return undef unless defined $r;
+    return $$r{$oid} unless $cache;
+    return $self->update($name, $$r{$oid} || undef);
+  }
+
+  if (defined $rw and !$rw) {
+    carp "attempt to set read only value";
+    return undef;
+  }
+
+  $r = $self->{wlc}->_snmp_write_ap($self, [$oid, $type, $new]);
+
+  if (defined $r) {
+    if (defined $$r{$oid}) {
+       return $$r{$oid} unless $cache;
+       return $self->update($name, $$r{$oid});
+    } else {
+      carp "unknown result from snmp set request=$oid response=$$r[0] ($$r[1])";
+    }
+  }
+
+  return undef;
+}
+
+
 # 1 week = 604800
 # 2 days = 172800
 # 1 day = 86400
@@ -267,7 +305,7 @@ our %_cachelife = (
 #    "ap_list"         => 300,
   );
 
-# oidprefix, use_slots, rw, type
+# oidprefix, use_slots, can_write, type
 
 my %_methods = (
     "numslots"        => [ ".1.3.6.1.4.1.14179.2.2.1.1.2.",  0, 1, OCTET_STRING ],
@@ -315,6 +353,22 @@ my %_methods = (
 
   );
 
+
+
+# oidprefix, use_cache, can_write, type
+
+my %_ethermethods = (
+
+# CISCO-LWAPP-AP::cLApEthernetIfEntry
+    "ethernetrxbytes"               => [ ".1.3.6.1.4.1.9.9.513.1.2.2.1.13.",  0, 0, COUNTER32 ],
+    "ethernettxbytes"               => [ ".1.3.6.1.4.1.9.9.513.1.2.2.1.14.",  0, 0, COUNTER32 ],
+
+# cLApEthernetIfInputOverrun iso.3.6.1.4.1.9.9.513.1.2.2.1.19
+# cLApEthernetIfInputDrops   iso.3.6.1.4.1.9.9.513.1.2.2.1.20
+# cLApEthernetIfThrottle     iso.3.6.1.4.1.9.9.513.1.2.2.1.25
+
+  );
+
 # INTEGER, INTEGER32, OCTET_STRING, OBJECT_IDENTIFIER, IPADDRESS, COUNTER, COUNTER32, GAUGE,
 # GAUGE32, UNSIGNED32, TIMETICKS, OPAQUE, COUNTER64
 
@@ -323,6 +377,13 @@ my %_methods = (
   foreach my $func (keys %_methods) {
     eval "sub $func { return \$_[0]->_generic_method(\"$func\", \$_[1], " .
           "\$_methods{$func});}";
+  }
+}
+
+{
+  foreach my $func (keys %_ethermethods) {
+    eval "sub $func { return \$_[0]->_ethernet_method(\"$func\", \$_[1], " .
+          "\$_ethermethods{$func});}";
   }
 }
 
