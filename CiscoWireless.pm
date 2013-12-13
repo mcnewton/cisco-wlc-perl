@@ -116,7 +116,7 @@ sub get_ap_by_mac
 {
   my ($self, $mac) = @_;
 
-  $mac = lc $mac;
+  $mac = sanitise_mac($mac);
 
   foreach my $wlc (values %{$self->{wlc_list}}) {
     foreach my $ap ($wlc->get_aps()) {
