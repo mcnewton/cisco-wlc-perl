@@ -179,6 +179,9 @@ sub _generic_method
   my $oid = $oidprefix . $self->{oidindex};
   my $r;
 
+
+  # Reading OIDs
+
   unless (defined($new)) {
     return $self->{$name} if defined $self->{$name};
 
@@ -186,8 +189,6 @@ sub _generic_method
       $r = $self->{wlc}->_snmp_get_ap($self, [$oid]);
       return undef unless defined $r;
       return $self->update($name, $$r{$oid} || undef);
-#      $self->{$name} = $$r{$oid} || undef;
-#      return $self->{$name};
     } else {
       my $slots = $self->numslots() || 1;
       my %ra = ();
@@ -210,13 +211,47 @@ sub _generic_method
     }
   }
 
-  if ($use_slots) {
-    carp "currently unable to write to slot-based oid";
-    return undef;
 
-    # todo: this can be fixed by accepting hashref as returned
-    # above, and writing with a loop like above
+  # Writing to slot-based OIDs
+
+  if ($use_slots) {
+
+    # If slot-based, permit the new value to be a hashref, where keys are the
+    # slot number (currently 0 or 1) and the value is the new value to set. It
+    # is not a requirement to set both values at once (hence not using a list).
+
+    if (!defined ref($new)) {
+      carp "unable to write SCALAR to slot-based option";
+      return undef;
+    }
+
+    if (ref($new) ne "HASH") {
+      carp "invalid hash for slot-based option";
+      return undef;
+    }
+
+    my $slots = $self->numslots() || 1;
+    my $result = {};
+
+    for (my $slot = 0; $slot < $slots; $slot++) {
+
+      my $soid = "$oid.$slot";
+
+      if (defined $$new{$slot}) {
+        my $nval = delete($$new{$slot});
+
+# currently no caching of slot-based values
+
+        $r = $self->{wlc}->_snmp_write_ap($self, [$soid, $type, $nval]);
+        $$result{$slot} = $$r{$soid};
+      }
+    }
+
+    return $result;
   }
+
+
+  # Writing to non-slot-based OIDs
 
   if (defined $rw and !$rw) {
     carp "attempt to set read only value";
@@ -228,8 +263,6 @@ sub _generic_method
   if (defined $r) {
     if (defined $$r{$oid}) {
        return $self->update($name, $$r{$oid});
-#      $self->{$name} = $$r{$oid};
-#      return $self->{$name};
     } else {
       carp "unknown result from snmp set request=$oid response=$$r[0] ($$r[1])";
     }
