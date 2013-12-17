@@ -156,6 +156,51 @@ sub cdpneighbour
   return \%out;
 }
 
+
+sub txpower
+{
+  my ($self, $slot, $power) = @_;
+
+  unless (defined $slot) {
+    carp "slot undefined";
+  }
+
+  unless (defined $power) {
+    my $lvl = $self->bsnAPIfPhyTxPowerLevel();
+    return $$lvl{$slot};
+  }
+
+  if ($power eq "auto") {
+    $self->bsnAPIfPhyTxPowerControl({$slot => 1});
+  } else {
+    $self->bsnAPIfPhyTxPowerControl({$slot => 2});
+    $self->bsnAPIfPhyTxPowerLevel({$slot => $power});
+  }
+}
+
+
+sub channel
+{
+  my ($self, $slot, $chan) = @_;
+
+  unless (defined $slot) {
+    carp "slot undefined";
+  }
+
+  unless (defined $chan) {
+    my $ch = $self->bsnAPIfPhyChannelNumber();
+    return $$ch{$slot};
+  }
+
+  if ($chan eq "auto") {
+    $self->bsnAPIfPhyChannelAssignment({$slot => 1});
+  } else {
+    $self->bsnAPIfPhyChannelAssignment({$slot => 2});
+    $self->bsnAPIfPhyChannelNumber({$slot => $chan});
+  }
+}
+
+
 sub wlc
 {
   my ($self) = @_;
