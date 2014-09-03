@@ -272,10 +272,57 @@ sub _snmp_write_ap
   my $r = $snmp_session->set_request(-varbindlist => $vbl);
   return $r if defined $r;
 
-  # AP may have moved to a different controller
+# Set returned a failure. This could have been for a number of reasons, and it
+# seems impossible to tell if it's the one we care about: that the AP is not
+# joined to the controller. (This may happen because the AP could have moved
+# since we queried the controllers.) So we try and read the value from the
+# controller. If the read fails then the AP has likely moved, so rescan the APs
+# and try the write elsewhere.
+
+  my $oid = $$vbl[0];
+
+  $r = $self->_snmp_get_ap($ap, [$oid]);
+
+  if (defined $r) {
+
+# The read succeeded, so the oid does seem to be there. Check the read-back
+# value to see if it is the same as the written value, and return true if it
+# is.
+#
+# This code may be wrong because some write-trigger or write-only values
+# may fail here, so need to be careful... which we're not.
+
+  my $wval = $$vbl[2];
+
+#print Dumper $r;
+
+#print "uh oh 1 '$wval'\n";
+#print "-" . $$r{$oid} . "-\n";
+
+    return $r if $$r{$oid} eq $wval;
+
+#print "uh oh 2 '$wval'\n";
+# Returned value does not match, so return undef to let the caller know that
+# the write failed.
+
+    return undef;
+  }
+
+# Couldn't read the OID, so likely the AP has moved. Rescan to try and find it
+# and then redo the write.
+
+  # AP may have moved to a different controller. This is expensive, but not a lot
+  # we can do about it if we really think the AP has moved or gone away.
   $self->_query_aps();
+
+# Return if the AP hadn't moved after all. Hopefully given the get above, this
+# will almost never be the case.
+
   my $wlc_ip2 = $ap->{wlc}->{ip};
   return undef if $wlc_ip eq $wlc_ip2;
+
+# Get the session for the new controller, then just do the set. There's not a
+# lot else we can do if this fails.
 
   $snmp_session = $self->_get_snmp_session($wlc_ip2);
   return $snmp_session->set_request(-varbindlist => $vbl);
