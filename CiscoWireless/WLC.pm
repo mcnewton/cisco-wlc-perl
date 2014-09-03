@@ -70,6 +70,21 @@ sub update
   return $value;
 }
 
+sub burnedinmac
+{
+  my ($self, $sep) = @_;
+
+  if (!defined($self->{burnedinmac})) {
+    my $oid = ".1.3.6.1.4.1.14179.1.1.1.9.0";
+    my $r = $self->_snmp_get([$oid]);
+    $r = sanitise_mac($$r{$oid}); # may be undef
+    return undef unless defined $r;
+    $r =~ s/^0x//;
+    $self->update("burnedinmac", $r);
+  }
+
+  return format_mac($self->{burnedinmac}, $sep);
+}
 
 sub ip
 {
@@ -140,15 +155,25 @@ our %_cachelife = (
   );
 
 
+# OID, readwrite?, type
+
 my %_methods = (
     "name"             => [ ".1.3.6.1.2.1.1.5.0",             0, OCTET_STRING],
     "model"            => [ ".1.3.6.1.4.1.14179.1.1.1.3.0",   0, OCTET_STRING],
     "serial"           => [ ".1.3.6.1.4.1.14179.1.1.1.4.0",   0, OCTET_STRING],
-    "burnedinmac"      => [ ".1.3.6.1.4.1.14179.1.1.1.9.0",   0, OCTET_STRING],
     "manufacturer"     => [ ".1.3.6.1.4.1.14179.1.1.1.12.0",  0, OCTET_STRING],
     "productname"      => [ ".1.3.6.1.4.1.14179.1.1.1.13.0",  0, OCTET_STRING],
     "version"          => [ ".1.3.6.1.4.1.14179.1.1.1.14.0",  0, OCTET_STRING],
     "maxaps"           => [ ".1.3.6.1.4.1.14179.1.1.1.18.0",  0, OCTET_STRING],
+
+# clsSysInfo
+
+    "clsSysApConnectCount"       => [ ".1.3.6.1.4.1.9.9.618.1.8.4.0",  0, UNSIGNED32],
+    "clsSysCurrentMemoryUsage"   => [ ".1.3.6.1.4.1.9.9.618.1.8.6.0",  0, UNSIGNED32],
+    "clsSysAverageMemoryUsage"   => [ ".1.3.6.1.4.1.9.9.618.1.8.7.0",  0, UNSIGNED32],
+    "clsSysCurrentCpuUsage"      => [ ".1.3.6.1.4.1.9.9.618.1.8.8.0",  0, UNSIGNED32],
+    "clsSysAverageCpuUsage"      => [ ".1.3.6.1.4.1.9.9.618.1.8.9.0",  0, UNSIGNED32],
+    "clsMaxClientsCount"         => [ ".1.3.6.1.4.1.9.9.618.1.8.12.0", 0, UNSIGNED32],
   );
 
 # INTEGER, INTEGER32, OCTET_STRING, OBJECT_IDENTIFIER, IPADDRESS, COUNTER, COUNTER32, GAUGE,
