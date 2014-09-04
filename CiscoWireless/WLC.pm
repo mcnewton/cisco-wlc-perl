@@ -179,6 +179,13 @@ my %_methods = (
     "clsSysCurrentCpuUsage"      => [ ".1.3.6.1.4.1.9.9.618.1.8.8.0",  0, UNSIGNED32],
     "clsSysAverageCpuUsage"      => [ ".1.3.6.1.4.1.9.9.618.1.8.9.0",  0, UNSIGNED32],
     "clsMaxClientsCount"         => [ ".1.3.6.1.4.1.9.9.618.1.8.12.0", 0, UNSIGNED32],
+
+# bsnGlobalDot11Config
+
+    "bsnSensorTemperature"          => [ ".1.3.6.1.4.1.14179.2.3.1.13.0", 0, UNSIGNED32],
+    "bsnTemperatureAlarmLowLimit"   => [ ".1.3.6.1.4.1.14179.2.3.1.14.0", 0, UNSIGNED32],
+    "bsnTemperatureAlarmHighLimit"  => [ ".1.3.6.1.4.1.14179.2.3.1.15.0", 0, UNSIGNED32],
+
   );
 
 # INTEGER, INTEGER32, OCTET_STRING, OBJECT_IDENTIFIER, IPADDRESS, COUNTER, COUNTER32, GAUGE,
