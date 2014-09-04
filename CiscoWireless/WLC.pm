@@ -166,8 +166,13 @@ my %_methods = (
     "version"          => [ ".1.3.6.1.4.1.14179.1.1.1.14.0",  0, OCTET_STRING],
     "maxaps"           => [ ".1.3.6.1.4.1.14179.1.1.1.18.0",  0, OCTET_STRING],
 
+# clsCpuInfo
+
+    "clsAllCpuUsage"             => [ ".1.3.6.1.4.1.9.9.618.1.8.4.0",  0, UNSIGNED32],
+
 # clsSysInfo
 
+    "clsMaxClients"              => [ ".1.3.6.1.4.1.9.9.618.1.8.3.0",  0, UNSIGNED32],
     "clsSysApConnectCount"       => [ ".1.3.6.1.4.1.9.9.618.1.8.4.0",  0, UNSIGNED32],
     "clsSysCurrentMemoryUsage"   => [ ".1.3.6.1.4.1.9.9.618.1.8.6.0",  0, UNSIGNED32],
     "clsSysAverageMemoryUsage"   => [ ".1.3.6.1.4.1.9.9.618.1.8.7.0",  0, UNSIGNED32],
