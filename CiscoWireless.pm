@@ -46,16 +46,6 @@ sub new
 # WLC functions
 
 #-------------------------------------------------------------------------------
-# get_wlcs
-
-sub get_wlcs
-{
-  my ($self) = @_;
-
-  return values $$self{wlc_list};
-}
-
-#-------------------------------------------------------------------------------
 # add_wlc
 
 sub add_wlc
@@ -83,6 +73,49 @@ sub add_wlc
   1;
 }
 
+#-------------------------------------------------------------------------------
+# get_wlcs
+
+sub get_wlcs
+{
+  my ($self) = @_;
+
+  return values $$self{wlc_list};
+}
+
+#-------------------------------------------------------------------------------
+# get_wlc_by_name
+
+sub get_wlc_by_name
+{
+  my ($self, $name) = @_;
+
+  foreach my $wlc (values %{$self->{wlc_list}}) {
+    if ($wlc->name() eq $name) {
+      return $wlc;
+    }
+  }
+
+  return undef;
+}
+
+#-------------------------------------------------------------------------------
+# get_wlc_by_mac
+
+sub get_wlc_by_mac
+{
+  my ($self, $mac) = @_;
+
+  $mac = sanitise_mac($mac);
+
+  foreach my $wlc (values %{$self->{wlc_list}}) {
+    if (lc $wlc->burnedinmac() eq $mac) {
+      return $wlc;
+    }
+  }
+
+  return undef;
+}
 
 
 ################################################################################
