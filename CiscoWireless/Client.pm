@@ -124,25 +124,30 @@ sub _generic_method
 }
 
 
+# oid, can write?, type
+
 my %_methods = (
-    "ipaddress"       => [ ".1.3.6.1.4.1.14179.2.1.4.1.2.",  1, IPADDRESS ],
-    "username"        => [ ".1.3.6.1.4.1.14179.2.1.4.1.3.",  1, OCTET_STRING ],
-    "apmac"           => [ ".1.3.6.1.4.1.14179.2.1.4.1.4.",  1, OBJECT_IDENTIFIER ],
-    "apslot"          => [ ".1.3.6.1.4.1.14179.2.1.4.1.5.",  1, INTEGER ],
-    "wlanid"          => [ ".1.3.6.1.4.1.14179.2.1.4.1.6.",  1, INTEGER ],
-    "ssid"            => [ ".1.3.6.1.4.1.14179.2.1.4.1.7.",  1, OCTET_STRING ],
-    "status"          => [ ".1.3.6.1.4.1.14179.2.1.4.1.9.",  1, INTEGER ],
-    "reasoncode"      => [ ".1.3.6.1.4.1.14179.2.1.4.1.10.", 1, INTEGER ],
-    "mobilitystatus"  => [ ".1.3.6.1.4.1.14179.2.1.4.1.11.", 1, INTEGER ],
-    "anchoraddress"   => [ ".1.3.6.1.4.1.14179.2.1.4.1.12.", 1, IPADDRESS ],
-    "sessiontimeout"  => [ ".1.3.6.1.4.1.14179.2.1.4.1.18.", 1, INTEGER32 ],
-    "delete"          => [ ".1.3.6.1.4.1.14179.2.1.4.1.22.", 0, INTEGER ],
-    "protocol"        => [ ".1.3.6.1.4.1.14179.2.1.4.1.25.", 1, INTEGER ],
-    "vlan"            => [ ".1.3.6.1.4.1.14179.2.1.4.1.29.", 1, INTEGER ],
-    "policytype"      => [ ".1.3.6.1.4.1.14179.2.1.4.1.30.", 1, INTEGER ],
-    "encryptioncipher"=> [ ".1.3.6.1.4.1.14179.2.1.4.1.31.", 1, INTEGER ],
-    "eaptype"         => [ ".1.3.6.1.4.1.14179.2.1.4.1.32.", 1, INTEGER ],
-    "ccxversion"      => [ ".1.3.6.1.4.1.14179.2.1.4.1.33.", 1, INTEGER ],
+    "ipaddress"       => [ ".1.3.6.1.4.1.14179.2.1.4.1.2.",  0, IPADDRESS ],
+    "username"        => [ ".1.3.6.1.4.1.14179.2.1.4.1.3.",  0, OCTET_STRING ],
+    "apmac"           => [ ".1.3.6.1.4.1.14179.2.1.4.1.4.",  0, OBJECT_IDENTIFIER ],
+    "apslot"          => [ ".1.3.6.1.4.1.14179.2.1.4.1.5.",  0, INTEGER ],
+    "wlanid"          => [ ".1.3.6.1.4.1.14179.2.1.4.1.6.",  0, INTEGER ],
+    "ssid"            => [ ".1.3.6.1.4.1.14179.2.1.4.1.7.",  0, OCTET_STRING ],
+    "status"          => [ ".1.3.6.1.4.1.14179.2.1.4.1.9.",  0, INTEGER ],
+    "reasoncode"      => [ ".1.3.6.1.4.1.14179.2.1.4.1.10.", 0, INTEGER ],
+    "mobilitystatus"  => [ ".1.3.6.1.4.1.14179.2.1.4.1.11.", 0, INTEGER ],
+    "anchoraddress"   => [ ".1.3.6.1.4.1.14179.2.1.4.1.12.", 0, IPADDRESS ],
+    "sessiontimeout"  => [ ".1.3.6.1.4.1.14179.2.1.4.1.18.", 0, INTEGER32 ],
+    "delete"          => [ ".1.3.6.1.4.1.14179.2.1.4.1.22.", 1, INTEGER ],
+    "protocol"        => [ ".1.3.6.1.4.1.14179.2.1.4.1.25.", 0, INTEGER ],
+    "vlan"            => [ ".1.3.6.1.4.1.14179.2.1.4.1.29.", 0, INTEGER ],
+    "policytype"      => [ ".1.3.6.1.4.1.14179.2.1.4.1.30.", 0, INTEGER ],
+    "encryptioncipher"=> [ ".1.3.6.1.4.1.14179.2.1.4.1.31.", 0, INTEGER ],
+    "eaptype"         => [ ".1.3.6.1.4.1.14179.2.1.4.1.32.", 0, INTEGER ],
+    "ccxversion"      => [ ".1.3.6.1.4.1.14179.2.1.4.1.33.", 0, INTEGER ],
+
+    "cldcClientProtocol"      => [ ".1.3.6.1.4.1.9.9.599.1.3.1.1.6.", 0, INTEGER ],
+
   );
 
 # INTEGER, INTEGER32, OCTET_STRING, OBJECT_IDENTIFIER, IPADDRESS, COUNTER, COUNTER32, GAUGE,
