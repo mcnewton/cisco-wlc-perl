@@ -146,7 +146,28 @@ my %_methods = (
     "eaptype"         => [ ".1.3.6.1.4.1.14179.2.1.4.1.32.", 0, INTEGER ],
     "ccxversion"      => [ ".1.3.6.1.4.1.14179.2.1.4.1.33.", 0, INTEGER ],
 
-    "cldcClientProtocol"      => [ ".1.3.6.1.4.1.9.9.599.1.3.1.1.6.", 0, INTEGER ],
+# cldcClientTable
+
+    "cldcClientWlanProfileName"   => [ ".1.3.6.1.4.1.9.9.599.1.3.1.1.3.",  0, INTEGER ],
+    "cldcClientProtocol"          => [ ".1.3.6.1.4.1.9.9.599.1.3.1.1.6.",  0, INTEGER ],
+    "cldcAssociationMode"         => [ ".1.3.6.1.4.1.9.9.599.1.3.1.1.7.",  0, INTEGER ],
+    "cldcApMacAddress"            => [ ".1.3.6.1.4.1.9.9.599.1.3.1.1.8.",  0, INTEGER ],
+    "cldcClientIPAddress"         => [ ".1.3.6.1.4.1.9.9.599.1.3.1.1.10.", 0, INTEGER ],
+
+    "cldcClientNacState"          => [ ".1.3.6.1.4.1.9.9.599.1.3.1.1.11.", 1, INTEGER ],
+    "cldcClientQuarantineVLAN"    => [ ".1.3.6.1.4.1.9.9.599.1.3.1.1.12.", 0, INTEGER ],
+    "cldcClientAccessVLAN"        => [ ".1.3.6.1.4.1.9.9.599.1.3.1.1.13.", 0, INTEGER ],
+
+    "cldcClientAclName"           => [ ".1.3.6.1.4.1.9.9.599.1.3.1.1.22.", 0, INTEGER ],
+    "cldcClientAclApplied"        => [ ".1.3.6.1.4.1.9.9.599.1.3.1.1.23.", 0, INTEGER ],
+
+    "cldcClientUsername"          => [ ".1.3.6.1.4.1.9.9.599.1.3.1.1.27.", 0, INTEGER ],
+    "cldcClientSSID"              => [ ".1.3.6.1.4.1.9.9.599.1.3.1.1.28.", 0, INTEGER ],
+
+#    "cldcClientPolicyType"        => [ ".1.3.6.1.4.1.9.9.599.1.3.1.1.9.", 0, INTEGER ],
+#    "cldcClientEapType"           => [ ".1.3.6.1.4.1.9.9.599.1.3.1.1.10.", 0, INTEGER ],
+#    "cldcClientEncryptionCypher"  => [ ".1.3.6.1.4.1.9.9.599.1.3.1.1.14.", 0, INTEGER ],
+#    "cldcClientCcxVersion"        => [ ".1.3.6.1.4.1.9.9.599.1.3.1.1.19.", 0, INTEGER ],
 
   );
 
