@@ -41,12 +41,29 @@ sub new
 #-------------------------------------------------------------------------------
 # Get
 
+sub get_all_keys
+{
+  my ($self, $filter) = @_;
+  my @keys = ();
+  my $fh;
+
+  opendir $fh, $self->{location} || return undef;
+  if ($filter) {
+    @keys = grep { /^$filter/ } readdir $fh;
+  } else {
+    @keys = grep { ! /^\./ } readdir $fh;
+  }
+  closedir $fh;
+
+  return \@keys;
+}
+
+
 sub get_all_subkeys
 {
   my ($self, $key) = @_;
   my @subkeys = ();
   my $fh;
-  my $invalid = 0;
 
   my $keypath = $self->get_keypath($key);
 
